@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gelir/Gider Takibi</title>
+</head>
+<body>
+    <h2>Gelir/Gider Takibi</h2>
+    <form action="/gelir-gider/ekle" method="post">
+        <select name="tip" required>
+            <option value="gelir">Gelir</option>
+            <option value="gider">Gider</option>
+        </select>
+        <input type="number" step="0.01" name="tutar" placeholder="Tutar" required>
+        <input type="text" name="açıklama" placeholder="Açıklama">
+        <button type="submit">Ekle</button>
+    </form>
+    <ul>
+        {% for hareket in hareketler %}
+            <li>{{ hareket.tarih }} - {{ hareket.tip }}: {{ hareket.tutar }} TL - {{ hareket.açıklama }}</li>
+        {% endfor %}
+    </ul>
+    <a href="/">Ana Sayfa</a>
+</body>
+</html>
