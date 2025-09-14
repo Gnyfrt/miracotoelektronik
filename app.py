@@ -2,11 +2,18 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
+from werkzeug.utils import secure_filename
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET', 'dev-secret')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///data.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = os.path.join('static', 'logos')
+
+# ensure upload folder exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
 
@@ -46,22 +53,39 @@ def login_required(f):
         return f(*args, **kwargs)
     return wrapped
 
-@app.before_first_request
-def create_tables():
-    db.create_all()
-    # create default admin user if not exists
-    if not User.query.filter_by(username='admin').first():
-        db.session.add(User(username='admin', password='12345'))
-        db.session.commit()
-    # create example data if empty
-    if not Marka.query.first():
-        m = Marka(ad='Örnek Marka', logo_url='/static/logo.png')
-        db.session.add(m)
-        db.session.commit()
-        a = AnahtarTip(tip='Örnek Anahtar', marka_id=m.id, fiyat=150.0)
-        db.session.add(a)
-        db.session.add(FiyatHareketi(anahtar_id=a.id, eski_fiyat=0.0, yeni_fiyat=150.0))
-        db.session.commit()
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def create_tables_and_seed():
+    """
+    Create DB tables and seed minimal demo data.
+    Called at import time inside app.app_context() to avoid relying on
+    app.before_first_request (which may not exist on some setups).
+    """
+    with app.app_context():
+        db.create_all()
+        # create default admin user if not exists
+        if not User.query.filter_by(username='admin').first():
+            db.session.add(User(username='admin', password='12345'))
+            db.session.commit()
+
+        # create example brands if empty — top ~30 commonly seen brands in Turkey (automotive/electronics mix)
+        if not Marka.query.first():
+            brands = [
+                'Renault','Fiat','Ford','Volkswagen','Toyota','Hyundai','Opel','Mercedes-Benz','BMW','Audi',
+                'Honda','Nissan','Peugeot','Citroën','Skoda','Seat','Dacia','Mitsubishi','Kia','Isuzu',
+                'Suzuki','Lexus','Porsche','Subaru','Mini','Jaguar','Land Rover','Volvo','Tesla','Alfa Romeo'
+            ]
+            for i, name in enumerate(brands, start=1):
+                slug = name.lower().replace(' ', '_').replace('ç','c').replace('ğ','g').replace('ü','u').replace('ş','s').replace('ö','o').replace('ı','i')
+                logo_path = f"/static/logos/{slug}.png"  # placeholder path; upload will replace
+                db.session.add(Marka(ad=name, logo_url=logo_path))
+            db.session.commit()
+
+# Call at import so it runs under flask run as well as when __main__.
+create_tables_and_seed()
 
 # Routes
 @app.route('/')
@@ -100,6 +124,29 @@ def markalar():
         return redirect(url_for('markalar'))
     markalar = Marka.query.all()
     return render_template('markalar.html', markalar=markalar)
+
+@app.route('/upload-logo/<int:marka_id>', methods=['POST'])
+@login_required
+def upload_logo(marka_id):
+    m = Marka.query.get_or_404(marka_id)
+    if 'logo' not in request.files:
+        flash('Logo dosyası bulunamadı','danger')
+        return redirect(url_for('markalar'))
+    file = request.files['logo']
+    if file.filename == '':
+        flash('Dosya seçilmedi','danger')
+        return redirect(url_for('markalar'))
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filename = f"{marka_id}_{filename}"
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(save_path)
+        m.logo_url = f"/static/logos/{filename}"
+        db.session.commit()
+        flash('Logo yüklendi','success')
+    else:
+        flash('Geçersiz dosya türü','danger')
+    return redirect(url_for('markalar'))
 
 @app.route('/marka-sil/<int:marka_id>', methods=['POST'])
 @login_required
@@ -153,8 +200,11 @@ def fiyat_guncelle(anahtar_id):
 @login_required
 def fiyat_gecmisi(anahtar_id):
     anahtar = AnahtarTip.query.get_or_404(anahtar_id)
-    hareketler = anahtar.fiyat_hareketleri[:20]
-    return render_template('fiyat_gecmisi.html', anahtar=anahtar, hareketler=hareketler)
+    hareketler = anahtar.fiyat_hareketleri[:100]
+    # prepare arrays for chart
+    tarihler = [h.tarih.strftime('%Y-%m-%d %H:%M:%S') for h in reversed(hareketler)]
+    fiyatlar = [h.yeni_fiyat for h in reversed(hareketler)]
+    return render_template('fiyat_gecmisi.html', anahtar=anahtar, hareketler=hareketler, tarihler=tarihler, fiyatlar=fiyatlar)
 
 if __name__ == '__main__':
     app.run(debug=True)
