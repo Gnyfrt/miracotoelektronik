@@ -3,8 +3,11 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
+from PIL import Image
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
+MAX_IMAGE_DIM = (800, 800)  # max width, height for uploaded images
+THUMBNAIL_SIZE = (240, 240)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET', 'dev-secret')
@@ -58,6 +61,34 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def resize_image(src_path, dest_path, max_dim=MAX_IMAGE_DIM):
+    try:
+        with Image.open(src_path) as im:
+            im.thumbnail(max_dim, Image.LANCZOS)
+            # ensure RGBA for PNG
+            if im.mode in ("RGBA", "LA"):
+                background = Image.new("RGBA", im.size)
+                background.paste(im, (0,0), im)
+                background.save(dest_path, optimize=True)
+            else:
+                im.convert('RGBA').save(dest_path, optimize=True)
+        return True
+    except Exception as e:
+        print('resize_image error:', e)
+        return False
+
+
+def create_thumbnail(src_path, dest_path, size=THUMBNAIL_SIZE):
+    try:
+        with Image.open(src_path) as im:
+            im.thumbnail(size, Image.LANCZOS)
+            im.convert('RGBA').save(dest_path, optimize=True)
+        return True
+    except Exception as e:
+        print('create_thumbnail error:', e)
+        return False
+
+
 def create_tables_and_seed():
     """
     Create DB tables and seed minimal demo data.
@@ -80,7 +111,7 @@ def create_tables_and_seed():
             ]
             for i, name in enumerate(brands, start=1):
                 slug = name.lower().replace(' ', '_').replace('ç','c').replace('ğ','g').replace('ü','u').replace('ş','s').replace('ö','o').replace('ı','i')
-                logo_path = f"/static/logos/{slug}.png"  # placeholder path; upload will replace
+                logo_path = f"/static/logos/{slug}.svg"  # prefer svg from simple-icons
                 db.session.add(Marka(ad=name, logo_url=logo_path))
             db.session.commit()
 
@@ -138,12 +169,39 @@ def upload_logo(marka_id):
         return redirect(url_for('markalar'))
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        filename = f"{marka_id}_{filename}"
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        ext = filename.rsplit('.', 1)[1].lower()
+        dest_name = f"{marka_id}_{filename}"
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], dest_name)
+        # Save original first
         file.save(save_path)
-        m.logo_url = f"/static/logos/{filename}"
-        db.session.commit()
-        flash('Logo yüklendi','success')
+        # If SVG, keep as is; otherwise resize & create thumbnail
+        if ext == 'svg':
+            m.logo_url = f"/static/logos/{dest_name}"
+            db.session.commit()
+            flash('SVG logo yüklendi','success')
+            return redirect(url_for('markalar'))
+        # For raster images, resize and save optimized PNG
+        try:
+            optimized_name = f"{marka_id}_{os.path.splitext(filename)[0]}.png"
+            optimized_path = os.path.join(app.config['UPLOAD_FOLDER'], optimized_name)
+            ok = resize_image(save_path, optimized_path)
+            if ok:
+                thumb_name = f"thumb_{optimized_name}"
+                thumb_path = os.path.join(app.config['UPLOAD_FOLDER'], thumb_name)
+                create_thumbnail(optimized_path, thumb_path)
+                # remove original uploaded file to save space
+                try:
+                    os.remove(save_path)
+                except Exception:
+                    pass
+                m.logo_url = f"/static/logos/{optimized_name}"
+                db.session.commit()
+                flash('Logo yüklendi ve optimize edildi','success')
+            else:
+                flash('Görsel işlenirken hata oluştu','danger')
+        except Exception as e:
+            print('upload error:', e)
+            flash('Dosya kaydedilirken hata oluştu','danger')
     else:
         flash('Geçersiz dosya türü','danger')
     return redirect(url_for('markalar'))
