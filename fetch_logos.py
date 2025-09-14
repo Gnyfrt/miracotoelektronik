@@ -1,34 +1,39 @@
+#!/usr/bin/env python3
 import os
 import requests
 
-# Marka slugları Simple Icons CDN ile eşleşecek şekilde hazırlanmalı (küçük harf, boşluk->-, bazı karakterler temizlenmeli)
-brands = [
-  'Renault','Fiat','Ford','Volkswagen','Toyota','Hyundai','Opel','Mercedes-Benz','BMW','Audi',
-  'Honda','Nissan','Peugeot','Citroën','Skoda','Seat','Dacia','Mitsubishi','Kia','Isuzu',
-  'Suzuki','Lexus','Porsche','Subaru','Mini','Jaguar','Land Rover','Volvo','Tesla','Alfa Romeo'
-]
+SLUGS_FILE = "static/logos_to_fetch.txt"
+OUT_DIR = "static/logos"
 
-def slugify(name):
-    s = name.lower()
-    s = s.replace(' ', '-')
-    s = s.replace('ç','c').replace('ğ','g').replace('ü','u').replace('ş','s').replace('ö','o').replace('ı','i')
-    s = s.replace('.', '').replace('/', '-')
-    return s
+def load_slugs():
+    if os.path.exists(SLUGS_FILE):
+        with open(SLUGS_FILE, "r", encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip() and not line.lstrip().startswith("#")]
+    return ["github", "python", "react", "node.js", "docker"]
 
-OUT_DIR = os.path.join('static', 'logos')
-os.makedirs(OUT_DIR, exist_ok=True)
-
-for name in brands:
-    slug = slugify(name)
-    url = f'https://cdn.simpleicons.org/{slug}'
+def fetch_slug(slug):
+    url = f"https://cdn.simpleicons.org/{slug}"
     try:
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200 and r.text.strip().startswith('<svg'):
-            path = os.path.join(OUT_DIR, f'{slug}.svg')
-            with open(path, 'w', encoding='utf-8') as f:
-                f.write(r.text)
-            print('Saved', path)
+        r = requests.get(url, timeout=15)
+        if r.status_code == 200 and "svg" in r.headers.get("content-type", ""):
+            return r.text
+    except Exception:
+        pass
+    return None
+
+def main():
+    os.makedirs(OUT_DIR, exist_ok=True)
+    slugs = load_slugs()
+    for slug in slugs:
+        print(f"Fetching {slug} ...", end=" ")
+        svg = fetch_slug(slug)
+        if svg:
+            path = os.path.join(OUT_DIR, f"{slug}.svg")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(svg)
+            print("OK")
         else:
-            print('Not found on CDN:', name, '->', url, 'status', r.status_code)
-    except Exception as e:
-        print('Error fetching', name, e)
+            print("Not found or error")
+
+if __name__ == "__main__":
+    main()
