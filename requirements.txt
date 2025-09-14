@@ -1,2 +1,5 @@
-Flask==2.3.2
-Flask-SQLAlchemy==3.0.3
+flask
+flask_sqlalchemy
+pillow
+requests
+werkzeug
