@@ -1,23 +1,12 @@
-# Mirac Oto Elektronik ERP
+# miracotoelektronik - Local demo
 
-Bu proje, oto elektronik anahtarcı dükkanı için Python Flask ile geliştirilen basit bir ERP yazılımıdır. Temel Özellikler:
-- Stok takibi
-- Gelir-gider takibi
-- Marka ve anahtar tipi yönetimi
+Bu repository’ye basit bir Flask uygulaması eklenmiştir: kullanıcı girişi, marka/anahtar yönetimi ve anahtar fiyat takibi.
 
-## Kurulum
-1. Python 3 ve pip yüklü olmalı.
-2. Gerekli paketleri yüklemek için:
-   ```
-   pip install flask flask_sqlalchemy
-   ```
-3. Uygulamayı başlatmak için:
-   ```
-   python app.py
-   ```
+- Başlatma:
+  - python -m venv venv
+  - source venv/bin/activate
+  - pip install -r requirements.txt
+  - export FLASK_APP=app.py
+  - flask run
 
-## Kullanım
-Web arayüzünden markalar, anahtar tipleri, stok ve gelir-gider işlemleri takip edilebilir.
-
----
-Geliştirici: Gnyfrt
+Not: Bu demo uygulama basit doğrulama (plain password) kullanır; üretimde şifreleme ve daha güçlü auth gerekir.

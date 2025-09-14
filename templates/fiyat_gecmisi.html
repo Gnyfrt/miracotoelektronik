@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h4>{{ anahtar.tip }} - Fiyat Geçmişi</h4>
+<ul class="list-group">
+  {% for h in hareketler %}
+  <li class="list-group-item">{{ h.tarih.strftime('%d.%m.%Y %H:%M') }}: {{ h.eski_fiyat }} → {{ h.yeni_fiyat }} TL</li>
+  {% endfor %}
+</ul>
+<a href="{{ url_for('fiyatlar') }}" class="btn btn-link mt-3">Geri</a>
+{% endblock %}

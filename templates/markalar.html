@@ -1,75 +1,63 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Marka & Anahtar Tipleri</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">Mirac Oto ERP</a>
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Markalar & Anahtar Tipleri</h2>
+    <form method="post" class="row g-3 mb-4">
+        <div class="col-md-5">
+            <input type="text" name="marka" class="form-control" placeholder="Yeni marka adı" required>
         </div>
-    </nav>
-    <div class="container">
-        <div class="card shadow mb-4">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Marka Ekle</h4>
-            </div>
-            <div class="card-body">
-                <form method="post" class="row g-3">
-                    <div class="col-md-10">
-                        <input type="text" name="marka" class="form-control" placeholder="Yeni marka adı" required>
-                    </div>
-                    <div class="col-md-2 d-grid">
-                        <button type="submit" class="btn btn-success">Ekle</button>
-                    </div>
-                </form>
-            </div>
+        <div class="col-md-5">
+            <input type="text" name="logo_url" class="form-control" placeholder="Logo URL (isteğe bağlı)">
         </div>
-        <div class="card shadow">
-            <div class="card-header bg-secondary text-white">
-                <h4 class="mb-0">Markalar ve Anahtar Tipleri</h4>
-            </div>
-            <div class="accordion" id="markaAccordion">
-                {% for marka in markalar %}
-                <div class="accordion-item mb-2">
-                    <h2 class="accordion-header" id="heading{{ marka.id }}">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ marka.id }}" aria-expanded="false" aria-controls="collapse{{ marka.id }}">
-                            {{ marka.ad }}
-                        </button>
-                    </h2>
-                    <div id="collapse{{ marka.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ marka.id }}" data-bs-parent="#markaAccordion">
-                        <div class="accordion-body">
-                            <form method="post" action="{{ url_for('marka_sil', marka_id=marka.id) }}" style="display:inline;">
-                                <button type="submit" class="btn btn-outline-danger btn-sm mb-2">Markayı Sil</button>
-                            </form>
-                            <ul class="list-group list-group-flush mb-2">
-                                {% for anahtar in marka.anahtarlar %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span><b>{{ anahtar.tip }}</b></span>
-                                    <form method="post" action="{{ url_for('anahtar_sil', anahtar_id=anahtar.id) }}">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm">Sil</button>
-                                    </form>
-                                </li>
-                                {% endfor %}
-                            </ul>
-                            <form method="post" action="{{ url_for('anahtar_ekle', marka_id=marka.id) }}" class="row g-2">
-                                <div class="col-8">
-                                    <input type="text" name="tip" class="form-control" placeholder="Yeni anahtar tipi" required>
-                                </div>
-                                <div class="col-4 d-grid">
-                                    <button type="submit" class="btn btn-outline-success">Anahtar Tipi Ekle</button>
-                                </div>
-                            </form>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-success">Ekle</button>
+        </div>
+    </form>
+    <div class="accordion" id="markaAccordion">
+        {% for marka in markalar %}
+        <div class="accordion-item mb-2">
+            <h2 class="accordion-header" id="heading{{ marka.id }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ marka.id }}" aria-expanded="false" aria-controls="collapse{{ marka.id }}">
+                    {% if marka.logo_url %}
+                    <img src="{{ marka.logo_url }}" alt="{{ marka.ad }} logo" style="height:32px; width:auto; margin-right:10px;">
+                    {% endif %}
+                    {{ marka.ad }}
+                </button>
+            </h2>
+            <div id="collapse{{ marka.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ marka.id }}" data-bs-parent="#markaAccordion">
+                <div class="accordion-body">
+                    <form method="post" action="{{ url_for('anahtar_ekle', marka_id=marka.id) }}" class="row g-2 mb-2">
+                        <div class="col-8">
+                            <input type="text" name="tip" class="form-control" placeholder="Anahtar tipi ekle" required>
                         </div>
-                    </div>
+                        <div class="col-4 d-grid">
+                            <button type="submit" class="btn btn-primary">Anahtar Ekle</button>
+                        </div>
+                    </form>
+                    <ul class="list-group">
+                        {% for anahtar in marka.anahtarlar %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ anahtar.tip }}
+                            <div>
+                              <a href="{{ url_for('fiyat_gecmisi', anahtar_id=anahtar.id) }}" class="btn btn-sm btn-info me-2">Geçmiş</a>
+                              <form method="post" action="{{ url_for('anahtar_sil', anahtar_id=anahtar.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+                              </form>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <form method="post" action="{{ url_for('marka_sil', marka_id=marka.id) }}" class="mt-2">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Markayı Sil</button>
+                    </form>
                 </div>
-                {% endfor %}
             </div>
         </div>
-        <a href="/" class="btn btn-secondary mt-3">Ana Sayfa</a>
+        {% endfor %}
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+    <a href="/" class="btn btn-link mt-4">Ana Sayfa</a>
+</div>
+{% endblock %}
 </html>

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Kontrol Paneli</h2>
+<div class="row">
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>Markalar</h5>
+        <p>Markaları yönet</p>
+        <a href="{{ url_for('markalar') }}" class="btn btn-sm btn-primary">Markalar</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>Fiyat Takibi</h5>
+        <p>Anahtar fiyatlarını görüntüle ve güncelle</p>
+        <a href="{{ url_for('fiyatlar') }}" class="btn btn-sm btn-warning">Fiyatlar</a>
+      </div>
+    </div>
+  </div>
+</div>
+<h3>Markalar</h3>
+<div class="row">
+  {% for marka in markalar %}
+  <div class="col-md-3">
+    <div class="card mb-3">
+      <img src="{{ marka.logo_url or '/static/logo.png' }}" class="card-img-top" alt="logo">
+      <div class="card-body">
+        <h6>{{ marka.ad }}</h6>
+        <a href="{{ url_for('markalar') }}" class="btn btn-sm btn-outline-primary">Yönet</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
